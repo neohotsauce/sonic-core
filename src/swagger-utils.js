@@ -224,11 +224,14 @@ const initSwaggerSchemaParameters = (swaggerSpec, originalRoute, parameterRegex,
   }
   for (const path of parameterPathList) {
     if (findPathParameterIndex(parameterList, path) === false) {
-      swaggerSpec.paths[route][method].parameters.push({
+     const exists = swaggerSpec.paths[route][method].parameters.find(item => item.name === trimString(path))
+      if (!exists) {
+        swaggerSpec.paths[route][method].parameters.push({
         name: trimString(path),
         in: 'path',
         required: !path.includes('?'),
       });
+      }
     }
   }
 };
