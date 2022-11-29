@@ -11,10 +11,11 @@ const {
 
 const logger = debugLogger(__filename);
 
-const getType = (obj) => ({}.toString
-  .call(obj)
-  .match(/\s([a-zA-Z]+)/)[1]
-  .toLowerCase());
+const getType = (obj) =>
+  ({}.toString
+    .call(obj)
+    .match(/\s([a-zA-Z]+)/)[1]
+    .toLowerCase());
 
 const NonPrimitiveTypes = {
   ARRAY: 'array',
@@ -88,7 +89,9 @@ const buildSwaggerJSON = (data) => {
         // eslint-disable-next-line no-case-declarations
         const typeData = getType(value[0]);
         if (typeData === NonPrimitiveTypes.ARRAY) {
-          throw new Error(`Complex object (array of array etc...)', ${value[0]}`);
+          throw new Error(
+            `Complex object (array of array etc...)', ${value[0]}`
+          );
         } else if (typeData === NonPrimitiveTypes.OBJECT) {
           op.properties[key] = {
             type: NonPrimitiveTypes.ARRAY,
@@ -152,7 +155,10 @@ const findQueryParameterIndex = (parameterList, key) => {
   if (getType(parameterList) === NonPrimitiveTypes.ARRAY) {
     // eslint-disable-next-line no-restricted-syntax
     for (let idx = 0; idx < parameterList.length; idx += 1) {
-      if (parameterList[idx].in === 'query' && parameterList[idx].name === key) {
+      if (
+        parameterList[idx].in === 'query' &&
+        parameterList[idx].name === key
+      ) {
         return idx;
       }
     }
@@ -161,8 +167,10 @@ const findQueryParameterIndex = (parameterList, key) => {
   return false;
 };
 
-const trimString = (path) => (!path.includes('?') ? path.substr(1) : path.substring(1, path.length - 1));
-const replaceRoutes = (route, regex) => route.replace(regex, (x) => `{${trimString(x)}}`);
+const trimString = (path) =>
+  !path.includes('?') ? path.substr(1) : path.substring(1, path.length - 1);
+const replaceRoutes = (route, regex) =>
+  route.replace(regex, (x) => `{${trimString(x)}}`);
 
 const initSwaggerSchemaSpecV3 = (swaggerSpec) => {
   if (!swaggerSpec.components) {
@@ -185,8 +193,7 @@ const initSwaggerPathForRouteAndMethod = (swaggerSpec, route, method) => {
   if (!swaggerSpec.paths) {
     swaggerSpec.paths = {
       [route]: {
-        [method]: {
-        },
+        [method]: {},
       },
     };
   }
@@ -198,6 +205,9 @@ const initSwaggerPathForRouteAndMethod = (swaggerSpec, route, method) => {
   }
   if (!swaggerSpec.paths[route][method].parameters) {
     swaggerSpec.paths[route][method].parameters = [];
+  }
+  if (!swaggerSpec.paths[route][method].security) {
+    swaggerSpec.paths[route][method].security = [];
   }
 
   // @TODO: remove default init of definitions after fixing issue with using components/schemas
@@ -214,7 +224,12 @@ const initSwaggerPathForRouteAndMethod = (swaggerSpec, route, method) => {
   }
 };
 
-const initSwaggerSchemaParameters = (swaggerSpec, originalRoute, parameterRegex, method) => {
+const initSwaggerSchemaParameters = (
+  swaggerSpec,
+  originalRoute,
+  parameterRegex,
+  method
+) => {
   const route = replaceRoutes(originalRoute, parameterRegex);
   initSwaggerPathForRouteAndMethod(swaggerSpec, route, method);
   const parameterList = swaggerSpec.paths[route][method].parameters;
@@ -224,22 +239,21 @@ const initSwaggerSchemaParameters = (swaggerSpec, originalRoute, parameterRegex,
   }
   for (const path of parameterPathList) {
     if (findPathParameterIndex(parameterList, path) === false) {
-     const exists = swaggerSpec.paths[route][method].parameters.find(item => item.name === trimString(path))
+      const exists = swaggerSpec.paths[route][method].parameters.find(
+        (item) => item.name === trimString(path)
+      );
       if (!exists) {
         swaggerSpec.paths[route][method].parameters.push({
-        name: trimString(path),
-        in: 'path',
-        required: !path.includes('?'),
-      });
+          name: trimString(path),
+          in: 'path',
+          required: !path.includes('?'),
+        });
       }
     }
   }
 };
 
-const generateQueryParameterSpec = (swaggerSpec,
-  route,
-  method,
-  queries) => {
+const generateQueryParameterSpec = (swaggerSpec, route, method, queries) => {
   const parameterList = swaggerSpec.paths[route][method].parameters;
   for (const key of Object.keys(queries)) {
     const pIdx = findQueryParameterIndex(parameterList, key);
@@ -253,12 +267,14 @@ const generateQueryParameterSpec = (swaggerSpec,
   }
 };
 
-const generateRequestBodySpec = (swaggerSpec,
+const generateRequestBodySpec = (
+  swaggerSpec,
   route,
   method,
   requestBody,
   contentType,
-  definitionName) => {
+  definitionName
+) => {
   if (!Object.keys(requestBody).length) {
     return;
   }
@@ -266,7 +282,10 @@ const generateRequestBodySpec = (swaggerSpec,
     definitionName = generateResponseRef();
   }
   if (swaggerSpec.openapi) {
-    swaggerSpec.paths[route][method].requestBody = swaggerRef(contentType, definitionName);
+    swaggerSpec.paths[route][method].requestBody = swaggerRef(
+      contentType,
+      definitionName
+    );
     // Deferring from using component schemas cause WTF is the complexity in making this work
     // I'd revisit at a later time in a more calmer state of mind
     // swaggerSpec.components.schemas[definitionName] = buildSwaggerJSON(requestBody);
@@ -277,19 +296,23 @@ const generateRequestBodySpec = (swaggerSpec,
     if (bodyIndex === false) {
       swaggerSpec.paths[route][method].parameters.push({ schema: {} });
     }
-    swaggerSpec.paths[route][method].parameters[bodyIndex].schema.$ref = `#/definitions/${definitionName}`;
+    swaggerSpec.paths[route][method].parameters[
+      bodyIndex
+    ].schema.$ref = `#/definitions/${definitionName}`;
     swaggerSpec.definitions[definitionName] = buildSwaggerJSON(requestBody);
   } else {
     throw new Error('Unknown swagger specification');
   }
 };
 
-const generateResponseBodySpec = (swaggerSpec,
+const generateResponseBodySpec = (
+  swaggerSpec,
   route,
   method,
   responseBody,
   contentType,
-  statusCode) => {
+  statusCode
+) => {
   if (!Object.keys(responseBody).length) {
     return;
   }
@@ -305,14 +328,39 @@ const generateResponseBodySpec = (swaggerSpec,
     if (!swaggerSpec.paths[route][method].responses[statusCode].schema) {
       swaggerSpec.paths[route][method].responses[statusCode].schema = {};
     }
-    swaggerSpec.paths[route][method].responses[statusCode].schema.$ref = `#/definitions/${definitionName}`;
+    swaggerSpec.paths[route][method].responses[
+      statusCode
+    ].schema.$ref = `#/definitions/${definitionName}`;
   } else {
     throw new Error('Unknown swagger specification');
   }
   swaggerSpec.definitions[definitionName] = buildSwaggerJSON(responseBody);
 };
 
-const writeAsSwaggerDocToFile = (swaggerSpec,
+const generateHeaderSpec = (swaggerSpec, route, method, headers) => {
+  const securityList = swaggerSpec.paths[route][method].security;
+  if (headers?.authorization?.startsWith('Bearer')) {
+    if (!swaggerSpec.components.securitySchemes) {
+      swaggerSpec.components.securitySchemes = {};
+    }
+    if (!swaggerSpec.components.securitySchemes.bearerAuth) {
+      swaggerSpec.components.securitySchemes.bearerAuth = {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      };
+    }
+    const exists = securityList.find((item) => item.bearerAuth);
+    if (!exists) {
+      swaggerSpec.paths[route][method].security.push({
+        bearerAuth: [],
+      });
+    }
+  }
+};
+
+const writeAsSwaggerDocToFile = (
+  swaggerSpec,
   method,
   originalRoute,
   parameterRegex,
@@ -322,23 +370,45 @@ const writeAsSwaggerDocToFile = (swaggerSpec,
   statusCode,
   contentType,
   requestDefinitionName,
-  swaggerFilePath) => {
+  swaggerFilePath,
+  headers = {}
+) => {
   try {
     responseBody = JSON.parse(responseBody);
   } catch (e) {
     logger("Response isn't a JSON object, ignoring parse");
   }
-  initSwaggerSchemaParameters(swaggerSpec, originalRoute, parameterRegex, method);
+  initSwaggerSchemaParameters(
+    swaggerSpec,
+    originalRoute,
+    parameterRegex,
+    method
+  );
 
   const route = replaceRoutes(originalRoute, parameterRegex);
   if (statusCode < 400) {
     // eslint-disable-next-line max-len
-    generateRequestBodySpec(swaggerSpec, route, method, requestBody, contentType, requestDefinitionName);
+    generateRequestBodySpec(
+      swaggerSpec,
+      route,
+      method,
+      requestBody,
+      contentType,
+      requestDefinitionName
+    );
     generateQueryParameterSpec(swaggerSpec, route, method, queries);
+    generateHeaderSpec(swaggerSpec, route, method, headers);
   }
 
   if (statusCode !== 204) {
-    generateResponseBodySpec(swaggerSpec, route, method, responseBody, contentType, statusCode);
+    generateResponseBodySpec(
+      swaggerSpec,
+      route,
+      method,
+      responseBody,
+      contentType,
+      statusCode
+    );
   }
   writeFileSync(swaggerFilePath, JSON.stringify(swaggerSpec, null, 4));
 };
@@ -383,15 +453,28 @@ const getBodyDependencies = (routes, method, swaggerSpec) => {
     }
 
     if (body) {
-      const rawDeps = matchAll(JSON.stringify(body), requestBodyDependencyRegex).toArray();
-      return { dependencies: new Set(rawDeps.map(getDependency)), body, definitionName };
+      const rawDeps = matchAll(
+        JSON.stringify(body),
+        requestBodyDependencyRegex
+      ).toArray();
+      return {
+        dependencies: new Set(rawDeps.map(getDependency)),
+        body,
+        definitionName,
+      };
     }
   }
 
   return defaultRef;
 };
 
-const getParameterDependencies = (route, method, parameters, name, strictMode = false) => {
+const getParameterDependencies = (
+  route,
+  method,
+  parameters,
+  name,
+  strictMode = false
+) => {
   let dependencies = [];
   const templateKey = 'defaultTemplate';
 
@@ -413,7 +496,9 @@ const getParameterDependencies = (route, method, parameters, name, strictMode = 
       }
     });
     if (!name && dependencies && strictMode) {
-      throw Error(`All routes with dependencies must have a name: ${method} ${route}`);
+      throw Error(
+        `All routes with dependencies must have a name: ${method} ${route}`
+      );
     }
   } else {
     throw Error(`Parameters must be an array ${JSON.stringify(parameters)}`);
@@ -434,20 +519,26 @@ const evaluateRoute = (route, context) => {
   return route;
 };
 
-const getDefinitions = (swaggerSpec) => generateResponse({}, swaggerSpec.definitions);
+const getDefinitions = (swaggerSpec) =>
+  generateResponse({}, swaggerSpec.definitions);
 
 const addDefinitions = (bodyDefinitions, swaggerSpec = {}) => {
   for (const name of Object.keys(bodyDefinitions)) {
-    swaggerSpec.definitions[name] = buildSwaggerJSON(
-      bodyDefinitions[name],
-    );
+    swaggerSpec.definitions[name] = buildSwaggerJSON(bodyDefinitions[name]);
   }
   return swaggerSpec;
 };
 
-const parseSwaggerRouteData = (swaggerSpec, bodyDefinitions, strictMode = false) => {
+const parseSwaggerRouteData = (
+  swaggerSpec,
+  bodyDefinitions,
+  strictMode = false
+) => {
   logger('Generating JSON object representing decomposed swagger definitions');
-  swaggerSpec.definitions = { ...getDefinitions(swaggerSpec), ...bodyDefinitions };
+  swaggerSpec.definitions = {
+    ...getDefinitions(swaggerSpec),
+    ...bodyDefinitions,
+  };
   const { paths } = swaggerSpec;
   const dependencyGraph = {};
   const definitionMap = {};
@@ -473,10 +564,8 @@ const parseSwaggerRouteData = (swaggerSpec, bodyDefinitions, strictMode = false)
       }
 
       logger('Obtaining parameter dependencies');
-      const {
-        route,
-        dependencies: parameterDependencies,
-      } = getParameterDependencies(path, method, routes[method].parameters, name);
+      const { route, dependencies: parameterDependencies } =
+        getParameterDependencies(path, method, routes[method].parameters, name);
 
       logger('Obtaining request body dependencies');
       const {
@@ -489,7 +578,7 @@ const parseSwaggerRouteData = (swaggerSpec, bodyDefinitions, strictMode = false)
       }
 
       const dependencies = Array.from(
-        new Set([...parameterDependencies, ...bodyDependencies]).values(),
+        new Set([...parameterDependencies, ...bodyDependencies]).values()
       );
       dependencyGraph[name] = { dependencies };
 
